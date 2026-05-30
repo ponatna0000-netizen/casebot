@@ -53,18 +53,20 @@ function ensureUser(data, userId) {
         };
     }
 
-    // 🔥 FIX OLD USERS
     if (data.users[userId].bank === undefined) {
         data.users[userId].bank = 0;
     }
 }
+
+// ================= ROLES =================
+
+const roleIceCream = '1509868893840081048';
+const roleSun = '1509868923204407399';
+const roleSummer = '1509868980850921552';
+
 // ================= CONFIG =================
 
 const ADMIN_ROLE_ID = '1509988273429155861';
-
-const role1 = '1509868893840081048';
-const role2 = '1509868923204407399';
-const role3 = '1509868980850921552';
 
 const cooldowns = {
     work: new Map(),
@@ -94,7 +96,7 @@ function getCaseType(input) {
 // ================= BOT =================
 
 client.once('ready', () => {
-    console.log('BOT ONLINE');
+    console.log('🤖 БОТ ЗАПУЩЕНО');
 });
 
 client.on('messageCreate', async (message) => {
@@ -108,11 +110,11 @@ client.on('messageCreate', async (message) => {
 
     // ---------------- BALANCE ----------------
     if (message.content === '!balance') {
-    return message.reply(
-`💰 Coins: ${data.users[userId].coins}
-🏦 Bank: ${data.users[userId].bank || 0}`
-    );
-}
+        return message.reply(
+`💰 Монети: ${data.users[userId].coins}
+🏦 Банк: ${data.users[userId].bank || 0}`
+        );
+    }
 
     // ---------------- SHOP ----------------
     if (message.content === '!shop') {
@@ -123,17 +125,17 @@ client.on('messageCreate', async (message) => {
     if (message.content === '!inv' || message.content === '!inventory') {
         const u = data.users[userId];
         return message.reply(
-`📦 INVENTORY
+`📦 ІНВЕНТАР
 
 🟢 Rare: ${u.cases.Rare}
 🔵 Epic: ${u.cases.Epic}
 🟣 Legendary: ${u.cases.Legendary}
 
-💰 Coins: ${u.coins}`
+💰 Монети: ${u.coins}`
         );
     }
 
-    // ---------------- GIVE COINS (ADMIN) ----------------
+    // ---------------- GIVE COINS ----------------
     if (message.content.startsWith('!givecoins')) {
         if (!message.member.roles.cache.has(ADMIN_ROLE_ID)) return;
 
@@ -147,30 +149,100 @@ client.on('messageCreate', async (message) => {
 
         saveData(data);
 
-        return message.reply('💰 OK');
+        return message.reply('💰 Готово');
     }
 
     // ---------------- PAY ----------------
-    if (message.content.startsWith('!pay')) {
+    if (message.content.startsWith('!open')) {
 
-        const target = message.mentions.users.first();
-        const amount = parseInt(message.content.split(' ')[2]);
+    const type = getCaseType(message.content.split(' ')[1]);
+    const amount = parseInt(message.content.split(' ')[2]) || 1;
 
-        if (!target || !amount) return message.reply('❌ !pay @user 100');
-        if (target.id === userId) return message.reply('❌ self');
+    const userCases = data.users[userId].cases[type] || 0;
 
-        ensureUser(data, target.id);
+    if (!type) return message.reply('❌ неправильний кейс');
+    if (userCases < amount) return message.reply('❌ немає кейсів');
 
-        if (data.users[userId].coins < amount)
-            return message.reply('❌ no money');
+    let total = 0;
 
-        data.users[userId].coins -= amount;
-        data.users[target.id].coins += amount;
+    for (let i = 0; i < amount; i++) {
 
-        saveData(data);
+        const c = cases[type];
 
-        return message.reply(`💸 sent ${amount}`);
+        // 💰 базові монети з кейса
+        total += Math.floor(Math.random() * (c.max - c.min + 1)) + c.min;
+
+        let roll = Math.random();
+        let roleToGive = null;
+        let compensation = 0;
+
+        // 🎲 RARE
+        if (type === 'Rare') {
+            if (roll < 0.15) {
+                roleToGive = roleIceCream;
+                compensation = 500;
+            }
+            else if (roll < 0.20) {
+                roleToGive = roleSun;
+                compensation = 1100;
+            }
+        }
+
+        // 🎲 EPIC
+        else if (type === 'Epic') {
+            if (roll < 0.25) {
+                roleToGive = roleIceCream;
+                compensation = 500;
+            }
+            else if (roll < 0.35) {
+                roleToGive = roleSun;
+                compensation = 1100;
+            }
+        }
+
+        // 🎲 LEGENDARY
+        else if (type === 'Legendary') {
+            if (roll < 0.30) {
+                roleToGive = roleIceCream;
+                compensation = 500;
+            }
+            else if (roll < 0.45) {
+                roleToGive = roleSun;
+                compensation = 1100;
+            }
+            else if (roll < 0.47) {
+                roleToGive = roleSummer;
+                compensation = 2300;
+            }
+        }
+
+        // 🎭 ВИДАЧА РОЛІ АБО КОМПЕНСАЦІЇ
+        if (roleToGive) {
+            try {
+                const member = message.member;
+
+                if (!member.roles.cache.has(roleToGive)) {
+                    await member.roles.add(roleToGive);
+                    message.channel.send(`🎭 Тобі випала роль <@&${roleToGive}>! +${compensation} монет`);
+                } else {
+                    data.users[userId].coins += compensation;
+                    message.channel.send(`🎭 Роль вже є → +${compensation} монет`);
+                }
+            } catch (err) {
+                console.log(err);
+                message.channel.send('❌ не можу видати роль');
+            }
+        }
     }
+
+    // 💰 запис результату
+    data.users[userId].cases[type] -= amount;
+    data.users[userId].coins += total;
+
+    saveData(data);
+
+    return message.reply(`🎉 ти отримав ${total} монет`);
+}
 
     // ---------------- WORK ----------------
     if (message.content === '!work') {
@@ -179,7 +251,7 @@ client.on('messageCreate', async (message) => {
         const last = cooldowns.work.get(userId) || 0;
 
         if (now - last < 60000)
-            return message.reply('⏳ cooldown');
+            return message.reply('⏳ перезарядка');
 
         const earned = Math.floor(Math.random() * 351) + 250;
 
@@ -188,329 +260,128 @@ client.on('messageCreate', async (message) => {
 
         saveData(data);
 
-        return message.reply(`💼 +${earned}`);
+        return message.reply(`💼 +${earned} монет`);
     }
 
     // ---------------- DAILY ----------------
     if (message.content === '!daily') {
 
-    const now = Date.now();
-    const last = cooldowns.daily.get(userId) || 0;
+        const now = Date.now();
+        const last = cooldowns.daily.get(userId) || 0;
 
-    const cooldownTime = 24 * 60 * 60 * 1000;
+        const cooldownTime = 24 * 60 * 60 * 1000;
 
-    if (now - last < cooldownTime) {
+        if (now - last < cooldownTime) {
 
-        const remaining = cooldownTime - (now - last);
+            const remaining = cooldownTime - (now - last);
 
-        const hours = Math.floor(remaining / (1000 * 60 * 60));
-        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+            const hours = Math.floor(remaining / (1000 * 60 * 60));
+            const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
 
-        return message.reply(
-            `⏳ Daily вже забрано\nЗалишилось: ${hours}г ${minutes}хв ${seconds}с`
-        );
-    }
-
-    const reward = 1500;
-
-    data.users[userId].coins += reward;
-    cooldowns.daily.set(userId, now);
-
-    saveData(data);
-
-    return message.reply(`🎁 Ти отримав ${reward} coins`);
-}
-
-    // ---------------- CASE BUY ----------------
-    if (message.content.startsWith('!buy')) {
-
-        const type = getCaseType(message.content.split(' ')[1]);
-        const amount = parseInt(message.content.split(' ')[2]) || 1;
-
-        if (!type) return message.reply('❌ case');
-
-        const price = cases[type].price * amount;
-
-        if (data.users[userId].coins < price)
-            return message.reply('❌ no money');
-
-        data.users[userId].coins -= price;
-        data.users[userId].cases[type] += amount;
-
-        saveData(data);
-
-        return message.reply(`✅ bought ${amount} ${type}`);
-    }
-if (message.content.startsWith('!rob')) {
-
-    const target = message.mentions.users.first();
-    if (!target) return message.reply('❌ !rob @user');
-
-    if (target.id === userId)
-        return message.reply('❌ не можна себе');
-
-    ensureUser(data, target.id);
-
-    // ✅ FIX COOLDOWN (правильний)
-    if (!cooldowns.rob) cooldowns.rob = new Map();
-
-    const now = Date.now();
-    const last = cooldowns.rob.get(userId) || 0;
-
-    const cooldownTime = 60 * 1000; // 1 хв
-
-    if (now - last < cooldownTime) {
-        const sec = Math.ceil((cooldownTime - (now - last)) / 1000);
-        return message.reply(`⏳ почекай ${sec} сек`);
-    }
-
-    const targetUser = data.users[target.id];
-
-// 💰 крадемо тільки coins (bank не чіпаємо)
-const targetMoney = targetUser.coins || 0;
-
-    if (targetMoney < 50)
-        return message.reply('❌ у жертви мало грошей');
-
-    const success = Math.random() < 0.5;
-
-    if (success) {
-
-        const steal = Math.floor(Math.random() * 200) + 50;
-        const realSteal = Math.min(steal, targetMoney);
-
-        data.users[target.id].coins -= realSteal;
-        data.users[userId].coins += realSteal;
-
-        cooldowns.rob.set(userId, now);
-        saveData(data);
-
-        return message.reply(`🦹 вкрав ${realSteal} coins`);
-    } else {
-
-        const fine = Math.floor(Math.random() * 150) + 50;
-
-        data.users[userId].coins -= fine;
-
-        cooldowns.rob.set(userId, now);
-        saveData(data);
-
-        return message.reply(`🚨 провал! штраф -${fine}`);
-    }
-}
-
-// ---------------- DEPOSIT ----------------
-if (
-    message.content.startsWith('!deposit') ||
-    message.content.startsWith('!dep')
-) {
-    const args = message.content.split(' ');
-    const amount = parseInt(args[1]);
-
-    if (!amount || amount <= 0)
-        return message.reply('❌ !dep 100');
-
-    const data = loadData();
-    const userId = message.author.id;
-
-    ensureUser(data, userId);
-
-    if (data.users[userId].coins < amount)
-        return message.reply('❌ нема грошей');
-
-    data.users[userId].coins -= amount;
-    data.users[userId].bank += amount;
-
-    saveData(data);
-
-    return message.reply(`🏦 +${amount} в банк`);
-}
-if (
-    message.content.startsWith('!withdraw') ||
-    message.content.startsWith('!with')
-) {
-    const args = message.content.split(' ');
-    const amount = parseInt(args[1]);
-
-    if (!amount || amount <= 0)
-        return message.reply('❌ !with 100');
-
-    const data = loadData();
-    const userId = message.author.id;
-
-    ensureUser(data, userId);
-
-    if (data.users[userId].bank < amount)
-        return message.reply('❌ нема в банку');
-
-    data.users[userId].bank -= amount;
-    data.users[userId].coins += amount;
-
-    saveData(data);
-
-    return message.reply(`💰 -${amount} з банку`);
-}
-
-    // ---------------- OPEN CASE ----------------
-    if (message.content.startsWith('!open')) {
-
-        const type = getCaseType(message.content.split(' ')[1]);
-        const amount = parseInt(message.content.split(' ')[2]) || 1;
-
-        const userCases = data.users[userId].cases[type] || 0;
-
-        if (userCases < amount)
-            return message.reply('❌ no cases');
-
-        let total = 0;
-
-        for (let i = 0; i < amount; i++) {
-            const c = cases[type];
-            total += Math.floor(Math.random() * (c.max - c.min + 1)) + c.min;
+            return message.reply(
+                `⏳ Daily вже забрано\nЗалишилось: ${hours}г ${minutes}хв ${seconds}с`
+            );
         }
 
-        data.users[userId].cases[type] -= amount;
-        data.users[userId].coins += total;
+        const reward = 1500;
+
+        data.users[userId].coins += reward;
+        cooldowns.daily.set(userId, now);
 
         saveData(data);
 
-        return message.reply(`🎉 +${total}`);
+        return message.reply(`🎁 ти отримав ${reward} монет`);
     }
 
-    // ---------------- SLOTS ----------------
-    if (message.content.startsWith('!slots')) {
+    // ---------------- ROB ----------------
+    if (message.content.startsWith('!rob')) {
 
-        const bet = parseInt(message.content.split(' ')[1]);
-        if (!bet) return;
+        const target = message.mentions.users.first();
+        if (!target) return message.reply('❌ !rob @user');
 
-        if (data.users[userId].coins < bet)
-            return message.reply('❌ no money');
+        if (target.id === userId)
+            return message.reply('❌ не можна себе');
 
-        const r = Math.random() * 100;
+        ensureUser(data, target.id);
 
-        let multi = 0;
+        if (!cooldowns.rob) cooldowns.rob = new Map();
 
-        if (r < 55) multi = 0;
-        else if (r < 80) multi = 2;
-        else if (r < 92) multi = 3;
-        else if (r < 98) multi = 5;
-        else if (r < 99.8) multi = 10;
-        else multi = 50;
+        const now = Date.now();
+        const last = cooldowns.rob.get(userId) || 0;
 
-        const win = bet * multi;
+        const cooldownTime = 60 * 1000;
 
-        data.users[userId].coins -= bet;
-        if (multi > 0) data.users[userId].coins += win;
-
-        saveData(data);
-
-        return message.reply(`🎰 x${multi} (${win})`);
-    }
-
-    // ---------------- BJ START ----------------
-    if (message.content.startsWith('!bj')) {
-
-        const bet = parseInt(message.content.split(' ')[1]);
-        if (!bet) return;
-
-        if (data.users[userId].coins < bet)
-            return message.reply('❌ no money');
-
-        function card() {
-            const c = [2,3,4,5,6,7,8,9,10,10,10,11];
-            return c[Math.floor(Math.random() * c.length)];
+        if (now - last < cooldownTime) {
+            const sec = Math.ceil((cooldownTime - (now - last)) / 1000);
+            return message.reply(`⏳ почекай ${sec} сек`);
         }
 
-        const game = {
-            player: card() + card(),
-            dealer: card() + card(),
-            bet,
-            userId
-        };
+        const targetMoney = data.users[target.id].coins || 0;
 
-        blackjackGames.set(userId, game);
+        if (targetMoney < 50)
+            return message.reply('❌ у жертви мало монет');
 
-        data.users[userId].coins -= bet;
-        saveData(data);
+        const success = Math.random() < 0.5;
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId(`hit_${userId}`)
-                .setLabel('Hit')
-                .setStyle(ButtonStyle.Success),
+        if (success) {
 
-            new ButtonBuilder()
-                .setCustomId(`stand_${userId}`)
-                .setLabel('Stand')
-                .setStyle(ButtonStyle.Danger)
-        );
+            const steal = Math.floor(Math.random() * 200) + 50;
+            const realSteal = Math.min(steal, targetMoney);
 
-        return message.reply({
-            content: `🃏 BJ\n\nYou: ${game.player}\nDealer: ${game.dealer}`,
-            components: [row]
-        });
+            data.users[target.id].coins -= realSteal;
+            data.users[userId].coins += realSteal;
+
+            cooldowns.rob.set(userId, now);
+            saveData(data);
+
+            return message.reply(`🦹 ти вкрав ${realSteal} монет`);
+        } else {
+
+            const fine = Math.floor(Math.random() * 150) + 50;
+
+            data.users[userId].coins -= fine;
+
+            cooldowns.rob.set(userId, now);
+            saveData(data);
+
+            return message.reply(`🚨 провал! штраф -${fine}`);
+        }
     }
 
+    // ---------------- DEPOSIT ----------------
+    if (message.content.startsWith('!dep') || message.content.startsWith('!deposit')) {
+
+        const amount = parseInt(message.content.split(' ')[1]);
+        if (!amount) return message.reply('❌ !dep 100');
+
+        if (data.users[userId].coins < amount)
+            return message.reply('❌ недостатньо монет');
+
+        data.users[userId].coins -= amount;
+        data.users[userId].bank += amount;
+
+        saveData(data);
+
+        return message.reply(`🏦 +${amount} в банк`);
+    }
+
+    // ---------------- WITHDRAW ----------------
+    if (message.content.startsWith('!with') || message.content.startsWith('!withdraw')) {
+
+        const amount = parseInt(message.content.split(' ')[1]);
+        if (!amount) return message.reply('❌ !with 100');
+
+        if (data.users[userId].bank < amount)
+            return message.reply('❌ немає в банку');
+
+        data.users[userId].bank -= amount;
+        data.users[userId].coins += amount;
+
+        saveData(data);
+
+        return message.reply(`💰 -${amount} з банку`);
+    }
 });
 
-// ================= BUTTONS =================
-
-client.on('interactionCreate', async (interaction) => {
-
-    if (!interaction.isButton()) return;
-
-    const userId = interaction.customId.split('_')[1];
-    const game = blackjackGames.get(userId);
-
-    if (!game)
-        return interaction.reply({ content: '❌ no game', ephemeral: true });
-
-    function card() {
-        const c = [2,3,4,5,6,7,8,9,10,10,10,11];
-        return c[Math.floor(Math.random() * c.length)];
-    }
-
-    if (interaction.customId.startsWith('hit_')) {
-
-        game.player += card();
-
-        if (game.player > 21) {
-            blackjackGames.delete(userId);
-            return interaction.update({
-                content: `💀 lose\nYou: ${game.player}`,
-                components: []
-            });
-        }
-
-        return interaction.update({
-            content: `🃏 You: ${game.player}\nDealer: ${game.dealer}`,
-            components: interaction.message.components
-        });
-    }
-
-    if (interaction.customId.startsWith('stand_')) {
-
-        while (game.dealer < 17) game.dealer += card();
-
-        let win = 0;
-
-        if (game.dealer > 21 || game.player > game.dealer) win = game.bet * 2;
-        else if (game.player === game.dealer) win = game.bet;
-
-        data = loadData();
-        ensureUser(data, userId);
-        data.users[userId].coins += win;
-        saveData(data);
-
-        blackjackGames.delete(userId);
-
-        return interaction.update({
-            content: `🏁 RESULT\nYou: ${game.player}\nDealer: ${game.dealer}\n💰 +${win}`,
-            components: []
-        });
-    }
-});
-console.log("TOKEN EXISTS:", !!process.env.TOKEN);
-console.log("TOKEN LENGTH:", process.env.TOKEN?.length);
 client.login(process.env.TOKEN);
