@@ -162,6 +162,11 @@ client.on('messageCreate', async (message) => {
 
     if (!type) return message.reply('❌ неправильний кейс');
     if (userCases < amount) return message.reply('❌ немає кейсів');
+let totalCompensation = 0;
+
+let iceCreamWins = 0;
+let sunWins = 0;
+let summerWins = 0;
 
     let total = 0;
 
@@ -226,7 +231,11 @@ client.on('messageCreate', async (message) => {
                     message.channel.send(`🎭 Тобі випала роль <@&${roleToGive}>! +${compensation} монет`);
                 } else {
                     data.users[userId].coins += compensation;
-                    message.channel.send(`🎭 Роль вже є → +${compensation} монет`);
+totalCompensation += compensation;
+
+if (roleToGive === roleIceCream) iceCreamWins++;
+if (roleToGive === roleSun) sunWins++;
+if (roleToGive === roleSummer) summerWins++;
                 }
             } catch (err) {
                 console.log(err);
@@ -240,6 +249,25 @@ client.on('messageCreate', async (message) => {
     data.users[userId].coins += total;
 
     saveData(data);
+let roleText = '';
+
+if (iceCreamWins > 0)
+    roleText += `🍦 Ice Cream: ${iceCreamWins}\n`;
+
+if (sunWins > 0)
+    roleText += `☀️ Sun: ${sunWins}\n`;
+
+if (summerWins > 0)
+    roleText += `🏖️ Summer: ${summerWins}\n`;
+
+return message.reply(
+`🎉 Ти отримав ${total} монет
+
+🎭 Випало ролей:
+${roleText || 'Немає'}
+
+💰 Компенсація: ${totalCompensation}`
+);
 
     return message.reply(`🎉 ти отримав ${total} монет`);
 }
