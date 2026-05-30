@@ -394,6 +394,7 @@ ${roleText || 'Немає'}
         return message.reply(`🏦 +${amount} в банк`);
     }
 
+
     // ---------------- WITHDRAW ----------------
     if (message.content.startsWith('!with') || message.content.startsWith('!withdraw')) {
 
@@ -614,6 +615,37 @@ client.on('interactionCreate', async (interaction) => {
             components: []
         });
     }
+// ---------------- HELP ----------------
+if (message.content === '!help') {
+
+    return message.reply(
+`📜 ДОСТУПНІ КОМАНДИ
+
+💰 Економіка
+!balance - переглянути баланс
+!daily - щоденна нагорода
+!work - заробити монети
+!pay @user сума - переказати монети
+!rob @user - пограбувати гравця
+
+🏦 Банк
+!dep сума - покласти гроші в банк
+!with сума - зняти гроші з банку
+
+📦 Кейси
+!shop - магазин кейсів
+!buy rare/epic/legendary кількість - купити кейси
+!open rare/epic/legendary кількість - відкрити кейси
+!inv - переглянути інвентар
+
+🎰 Азартні ігри
+!slots сума - слот-машина
+!bj сума - Blackjack
+
+ℹ️ Інше
+!help - список команд`
+    );
+}
 });
 
 client.login(process.env.TOKEN);
