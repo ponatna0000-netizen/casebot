@@ -194,21 +194,33 @@ client.on('messageCreate', async (message) => {
     // ---------------- DAILY ----------------
     if (message.content === '!daily') {
 
-        const now = Date.now();
-        const last = cooldowns.daily.get(userId) || 0;
+    const now = Date.now();
+    const last = cooldowns.daily.get(userId) || 0;
 
-        if (now - last < 86400000)
-            return message.reply('⏳ already taken');
+    const cooldownTime = 24 * 60 * 60 * 1000;
 
-        const reward = 1500;
+    if (now - last < cooldownTime) {
 
-        data.users[userId].coins += reward;
-        cooldowns.daily.set(userId, now);
+        const remaining = cooldownTime - (now - last);
 
-        saveData(data);
+        const hours = Math.floor(remaining / (1000 * 60 * 60));
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
 
-        return message.reply(`🎁 +${reward}`);
+        return message.reply(
+            `⏳ Daily вже забрано\nЗалишилось: ${hours}г ${minutes}хв ${seconds}с`
+        );
     }
+
+    const reward = 1500;
+
+    data.users[userId].coins += reward;
+    cooldowns.daily.set(userId, now);
+
+    saveData(data);
+
+    return message.reply(`🎁 Ти отримав ${reward} coins`);
+}
 
     // ---------------- CASE BUY ----------------
     if (message.content.startsWith('!buy')) {
@@ -253,7 +265,10 @@ if (message.content.startsWith('!rob')) {
         return message.reply(`⏳ почекай ${sec} сек`);
     }
 
-    const targetMoney = data.users[target.id].coins;
+    const targetUser = data.users[target.id];
+
+// 💰 крадемо тільки coins (bank не чіпаємо)
+const targetMoney = targetUser.coins || 0;
 
     if (targetMoney < 50)
         return message.reply('❌ у жертви мало грошей');
@@ -496,5 +511,6 @@ client.on('interactionCreate', async (interaction) => {
         });
     }
 });
-
+console.log("TOKEN EXISTS:", !!process.env.TOKEN);
+console.log("TOKEN LENGTH:", process.env.TOKEN?.length);
 client.login(process.env.TOKEN);
