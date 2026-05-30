@@ -404,6 +404,188 @@ if (message.content.startsWith('!buy')) {
 
     return message.reply(`🛒 куплено ${amount} ${type} кейс(ів) за ${price} coins`);
 }
+if (message.content.startsWith('!pay')) {
+
+    const target = message.mentions.users.first();
+    const amount = parseInt(message.content.split(' ')[2]);
+
+    if (!target || !amount)
+        return message.reply('❌ !pay @user 100');
+
+    if (target.id === userId)
+        return message.reply('❌ не можна переказати собі');
+
+    ensureUser(data, target.id);
+
+    if (data.users[userId].coins < amount)
+        return message.reply('❌ недостатньо монет');
+
+    data.users[userId].coins -= amount;
+    data.users[target.id].coins += amount;
+
+    saveData(data);
+
+    return message.reply(`💸 переказано ${amount} монет`);
+}
+if (message.content.startsWith('!slots')) {
+
+    const bet = parseInt(message.content.split(' ')[1]);
+
+    if (!bet || bet <= 0)
+        return message.reply('❌ !slots 100');
+
+    if (data.users[userId].coins < bet)
+        return message.reply('❌ недостатньо монет');
+
+    const r = Math.random() * 100;
+
+    let multi = 0;
+
+    if (r < 55) multi = 0;
+    else if (r < 80) multi = 2;
+    else if (r < 92) multi = 3;
+    else if (r < 98) multi = 5;
+    else if (r < 99.8) multi = 10;
+    else multi = 50;
+
+    const win = bet * multi;
+
+    data.users[userId].coins -= bet;
+
+    if (multi > 0)
+        data.users[userId].coins += win;
+
+    saveData(data);
+
+    return message.reply(
+        `🎰 Множник: x${multi}\n💰 Виграш: ${win}`
+    );
+}
+if (message.content.startsWith('!bj')) {
+
+    const bet = parseInt(message.content.split(' ')[1]);
+
+    if (!bet || bet <= 0)
+        return message.reply('❌ !bj 100');
+
+    if (data.users[userId].coins < bet)
+        return message.reply('❌ недостатньо монет');
+
+    function card() {
+        const cards = [2,3,4,5,6,7,8,9,10,10,10,11];
+        return cards[Math.floor(Math.random() * cards.length)];
+    }
+
+    const game = {
+        player: card() + card(),
+        dealer: card() + card(),
+        bet
+    };
+
+    blackjackGames.set(userId, game);
+
+    data.users[userId].coins -= bet;
+    saveData(data);
+
+    const row = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId(`hit_${userId}`)
+                .setLabel('Hit')
+                .setStyle(ButtonStyle.Success),
+
+            new ButtonBuilder()
+                .setCustomId(`stand_${userId}`)
+                .setLabel('Stand')
+                .setStyle(ButtonStyle.Danger)
+        );
+
+    return message.reply({
+        content:
+`🃏 Blackjack
+
+Ти: ${game.player}
+Дилер: ${game.dealer}`,
+        components: [row]
+    });
+}
+});
+client.on('interactionCreate', async (interaction) => {
+
+    if (!interaction.isButton()) return;
+
+    const userId = interaction.customId.split('_')[1];
+
+    const game = blackjackGames.get(userId);
+
+    if (!game)
+        return interaction.reply({
+            content: '❌ гра не знайдена',
+            ephemeral: true
+        });
+
+    function card() {
+        const cards = [2,3,4,5,6,7,8,9,10,10,10,11];
+        return cards[Math.floor(Math.random() * cards.length)];
+    }
+
+    if (interaction.customId.startsWith('hit_')) {
+
+        game.player += card();
+
+        if (game.player > 21) {
+
+            blackjackGames.delete(userId);
+
+            return interaction.update({
+                content: `💀 Перебір!\nТи: ${game.player}`,
+                components: []
+            });
+        }
+
+        return interaction.update({
+            content:
+`🃏 Blackjack
+
+Ти: ${game.player}
+Дилер: ${game.dealer}`,
+            components: interaction.message.components
+        });
+    }
+
+    if (interaction.customId.startsWith('stand_')) {
+
+        while (game.dealer < 17)
+            game.dealer += card();
+
+        let win = 0;
+
+        if (game.dealer > 21 || game.player > game.dealer)
+            win = game.bet * 2;
+        else if (game.player === game.dealer)
+            win = game.bet;
+
+        const data = loadData();
+
+        ensureUser(data, userId);
+
+        data.users[userId].coins += win;
+
+        saveData(data);
+
+        blackjackGames.delete(userId);
+
+        return interaction.update({
+            content:
+`🏁 Результат
+
+Ти: ${game.player}
+Дилер: ${game.dealer}
+
+💰 Виграш: ${win}`,
+            components: []
+        });
+    }
 });
 
 client.login(process.env.TOKEN);
