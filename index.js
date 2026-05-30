@@ -382,6 +382,28 @@ client.on('messageCreate', async (message) => {
 
         return message.reply(`💰 -${amount} з банку`);
     }
+if (message.content.startsWith('!buy')) {
+
+    const args = message.content.split(' ');
+    const type = getCaseType(args[1]);
+    const amount = parseInt(args[2]) || 1;
+
+    if (!type) return message.reply('❌ неправильний кейс');
+
+    if (amount <= 0) return message.reply('❌ неправильна кількість');
+
+    const price = cases[type].price * amount;
+
+    if (data.users[userId].coins < price)
+        return message.reply(`❌ не вистачає монет. Потрібно ${price}`);
+
+    data.users[userId].coins -= price;
+    data.users[userId].cases[type] += amount;
+
+    saveData(data);
+
+    return message.reply(`🛒 куплено ${amount} ${type} кейс(ів) за ${price} coins`);
+}
 });
 
 client.login(process.env.TOKEN);
