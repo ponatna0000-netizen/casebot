@@ -152,6 +152,59 @@ client.on('messageCreate', async (message) => {
         return message.reply('💰 Готово');
     }
 
+// ---------------- REMOVE COINS ----------------
+if (message.content.startsWith('!removecoins')) {
+
+    if (!message.member.roles.cache.has(ADMIN_ROLE_ID))
+        return;
+
+    const user = message.mentions.users.first();
+    const amount = parseInt(message.content.split(' ')[2]);
+
+    if (!user || !amount)
+        return message.reply('❌ !removecoins @user 100');
+
+    ensureUser(data, user.id);
+
+    data.users[user.id].coins = Math.max(
+        0,
+        data.users[user.id].coins - amount
+    );
+
+    saveData(data);
+
+    return message.reply(`💸 Забрано ${amount} монет`);
+}
+
+// ---------------- REMOVE CASES ----------------
+if (message.content.startsWith('!removecases')) {
+
+    if (!message.member.roles.cache.has(ADMIN_ROLE_ID))
+        return;
+
+    const user = message.mentions.users.first();
+    const type = getCaseType(message.content.split(' ')[2]);
+    const amount = parseInt(message.content.split(' ')[3]);
+
+    if (!user || !type || !amount)
+        return message.reply(
+            '❌ !removecases @user rare 10'
+        );
+
+    ensureUser(data, user.id);
+
+    data.users[user.id].cases[type] = Math.max(
+        0,
+        data.users[user.id].cases[type] - amount
+    );
+
+    saveData(data);
+
+    return message.reply(
+        `📦 Забрано ${amount} ${type} кейсів`
+    );
+}
+
     // ---------------- PAY ----------------
     if (message.content.startsWith('!open')) {
 
@@ -291,6 +344,92 @@ ${roleText || 'Немає'}
         return message.reply(`💼 +${earned} монет`);
     }
 
+// ---------------- LEADERBOARD ----------------
+if (
+    message.content === '!top cash' ||
+    message.content === '!lb cash'
+) {
+
+    const sorted = Object.entries(data.users)
+        .sort((a, b) => b[1].coins - a[1].coins);
+
+    const top10 = sorted.slice(0, 10);
+
+    let text = '🏆 ТОП 10 ПО МОНЕТАХ\n\n';
+
+    for (let i = 0; i < top10.length; i++) {
+
+        const [id, userData] = top10[i];
+
+        let username = 'Невідомий';
+
+        try {
+            const user = await client.users.fetch(id);
+            username = user.username;
+        } catch {}
+
+        text += `${i + 1}. ${username} — 💰 ${userData.coins}\n`;
+    }
+
+    const myPlace =
+        sorted.findIndex(([id]) => id === userId) + 1;
+
+    text += `\n📍 Твоє місце: #${myPlace}`;
+
+    return message.reply(text);
+}
+if (
+    message.content === '!top case' ||
+    message.content === '!lb case'
+) {
+
+    const sorted = Object.entries(data.users)
+        .sort((a, b) => {
+
+            const aCases =
+                a[1].cases.Rare +
+                a[1].cases.Epic +
+                a[1].cases.Legendary;
+
+            const bCases =
+                b[1].cases.Rare +
+                b[1].cases.Epic +
+                b[1].cases.Legendary;
+
+            return bCases - aCases;
+        });
+
+    const top10 = sorted.slice(0, 10);
+
+    let text = '📦 ТОП 10 ПО КЕЙСАХ\n\n';
+
+    for (let i = 0; i < top10.length; i++) {
+
+        const [id, userData] = top10[i];
+
+        let username = 'Невідомий';
+
+        try {
+            const user = await client.users.fetch(id);
+            username = user.username;
+        } catch {}
+
+        const totalCases =
+            userData.cases.Rare +
+            userData.cases.Epic +
+            userData.cases.Legendary;
+
+        text += `${i + 1}. ${username} — 📦 ${totalCases}\n`;
+    }
+
+    const myPlace =
+        sorted.findIndex(([id]) => id === userId) + 1;
+
+    text += `\n📍 Твоє місце: #${myPlace}`;
+
+    return message.reply(text);
+}
+
     // ---------------- DAILY ----------------
     if (message.content === '!daily') {
 
@@ -398,6 +537,12 @@ if (message.content === '!help') {
 !buy rare/epic/legendary кількість - купити кейси
 !open rare/epic/legendary кількість - відкрити кейси
 !inv - переглянути інвентар
+
+🏆 Рейтинги
+!top cash
+!lb cash
+!top case
+!lb case
 
 🎰 Азартні ігри
 !slots сума - слот-машина
