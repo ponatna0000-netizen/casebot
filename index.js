@@ -665,4 +665,8 @@ process.on('unhandledRejection', (err) => {
     console.error('UNHANDLED REJECTION:', err);
 });
 
+setInterval(() => {
+    console.log('BOT HEARTBEAT', new Date().toISOString());
+}, 30000);
+
 client.login(process.env.TOKEN);
