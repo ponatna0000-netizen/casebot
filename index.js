@@ -181,45 +181,45 @@ let summerWins = 0;
         let roleToGive = null;
         let compensation = 0;
 
-        // 🎲 RARE
-        if (type === 'Rare') {
-            if (roll < 0.15) {
-                roleToGive = roleIceCream;
-                compensation = 500;
-            }
-            else if (roll < 0.20) {
-                roleToGive = roleSun;
-                compensation = 1100;
-            }
-        }
+       // 🎲 RARE
+if (type === 'Rare') {
+    if (roll < 0.05) {          // 5%
+        roleToGive = roleIceCream;
+        compensation = 500;
+    }
+    else if (roll < 0.06) {     // 1%
+        roleToGive = roleSun;
+        compensation = 1100;
+    }
+}
 
-        // 🎲 EPIC
-        else if (type === 'Epic') {
-            if (roll < 0.25) {
-                roleToGive = roleIceCream;
-                compensation = 500;
-            }
-            else if (roll < 0.35) {
-                roleToGive = roleSun;
-                compensation = 1100;
-            }
-        }
+// 🎲 EPIC
+else if (type === 'Epic') {
+    if (roll < 0.08) {          // 8%
+        roleToGive = roleIceCream;
+        compensation = 500;
+    }
+    else if (roll < 0.13) {     // 5%
+        roleToGive = roleSun;
+        compensation = 1100;
+    }
+    else if (roll < 0.135) {    // 0.5%
+        roleToGive = roleSummer;
+        compensation = 2300;
+    }
+}
 
-        // 🎲 LEGENDARY
-        else if (type === 'Legendary') {
-            if (roll < 0.30) {
-                roleToGive = roleIceCream;
-                compensation = 500;
-            }
-            else if (roll < 0.45) {
-                roleToGive = roleSun;
-                compensation = 1100;
-            }
-            else if (roll < 0.47) {
-                roleToGive = roleSummer;
-                compensation = 2300;
-            }
-        }
+// 🎲 LEGENDARY
+else if (type === 'Legendary') {
+    if (roll < 0.10) {          // 10%
+        roleToGive = roleSun;
+        compensation = 1100;
+    }
+    else if (roll < 0.115) {    // 1.5%
+        roleToGive = roleSummer;
+        compensation = 2300;
+    }
+}
 
         // 🎭 ВИДАЧА РОЛІ АБО КОМПЕНСАЦІЇ
         if (roleToGive) {
