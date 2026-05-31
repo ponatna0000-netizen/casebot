@@ -95,7 +95,7 @@ function getCaseType(input) {
 
 // ================= BOT =================
 
-client.once('ready', () => {
+client.once('clientReady', () => {
     console.log('🤖 БОТ ЗАПУЩЕНО');
 });
 
@@ -656,5 +656,13 @@ client.on('ready', () => {
 client.on('error', console.error);
 
 client.on('shardError', console.error);
+
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+    console.error('UNHANDLED REJECTION:', err);
+});
 
 client.login(process.env.TOKEN);
