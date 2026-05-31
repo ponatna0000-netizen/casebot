@@ -649,4 +649,12 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
+client.on('ready', () => {
+    console.log(`Увійшов як ${client.user.tag}`);
+});
+
+client.on('error', console.error);
+
+client.on('shardError', console.error);
+
 client.login(process.env.TOKEN);
