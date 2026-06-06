@@ -109,7 +109,11 @@ client.on('messageCreate', async (message) => {
     ensureUser(data, userId);
 
     // ---------------- BALANCE ----------------
-    if (message.content === '!balance') {
+    if (
+    message.content === '!balance' ||
+    message.content === '!bal'
+)
+ {
         return message.reply(
 `💰 Монети: ${data.users[userId].coins}
 🏦 Банк: ${data.users[userId].bank || 0}`
@@ -517,26 +521,33 @@ if (
     }
 // ---------------- HELP ----------------
 if (message.content === '!help') {
-
-    return message.reply(
-`📜 ДОСТУПНІ КОМАНДИ
+    return message.reply(`
+📖 ДОСТУПНІ КОМАНДИ
 
 💰 Економіка
-!balance - переглянути баланс
-!daily - щоденна нагорода
-!work - заробити монети
-!pay @user сума - переказати монети
-!rob @user - пограбувати гравця
+!balance
+!daily
+!work
+!pay @user сума
+!rob @user
 
 🏦 Банк
-!dep сума - покласти гроші в банк
-!with сума - зняти гроші з банку
+!dep сума
+!with сума
 
 📦 Кейси
-!shop - магазин кейсів
-!buy rare/epic/legendary кількість - купити кейси
-!open rare/epic/legendary кількість - відкрити кейси
-!inv - переглянути інвентар
+!shop
+!buy rare/epic/legendary кількість
+!open rare/epic/legendary кількість
+!sell rare/epic/legendary кількість
+!gift @user rare/epic/legendary кількість
+!chances rare/epic/legendary
+!inv
+
+👤 Профіль
+!profile
+!prof
+!rank
 
 🏆 Рейтинги
 !top cash
@@ -544,13 +555,190 @@ if (message.content === '!help') {
 !top case
 !lb case
 
-🎰 Азартні ігри
-!slots сума - слот-машина
-!bj сума - Blackjack
+❓ Допомога
+!help
+`);
+} 
+// ---------------- CHANCES ----------------
+if (message.content.startsWith('!chances')) {
 
-ℹ️ Інше
-!help - список команд`
+    const type = getCaseType(message.content.split(' ')[1]);
+
+    if (!type)
+        return message.reply(
+            '❌ !chances rare/epic/legendary'
+        );
+
+    if (type === 'Rare') {
+        return message.reply(
+`🎲 Rare Case
+
+🍦 Ice Cream — 5%
+☀️ Sun — 1%
+💰 Монети — 94%`
+        );
+    }
+
+    if (type === 'Epic') {
+        return message.reply(
+`🎲 Epic Case
+
+🍦 Ice Cream — 8%
+☀️ Sun — 5%
+🌴 Summer — 0.5%
+💰 Монети — 86.5%`
+        );
+    }
+
+    if (type === 'Legendary') {
+        return message.reply(
+`🎲 Legendary Case
+
+☀️ Sun — 10%
+🌴 Summer — 1.5%
+💰 Монети — 88.5%`
+        );
+    }
+}
+
+// ---------------- GIFT CASE ----------------
+if (message.content.startsWith('!giftcase')) {
+
+    const target = message.mentions.users.first();
+    const type = getCaseType(message.content.split(' ')[2]);
+    const amount = parseInt(message.content.split(' ')[3]);
+
+    if (!target || !type || !amount)
+        return message.reply(
+            '❌ !giftcase @user rare 5'
+        );
+
+    if (target.id === userId)
+        return message.reply(
+            '❌ не можна подарувати собі'
+        );
+
+    ensureUser(data, target.id);
+
+    if (data.users[userId].cases[type] < amount)
+        return message.reply(
+            '❌ недостатньо кейсів'
+        );
+
+    data.users[userId].cases[type] -= amount;
+    data.users[target.id].cases[type] += amount;
+
+    saveData(data);
+
+    return message.reply(
+        `🎁 передано ${amount} ${type} кейс(ів) користувачу ${target.username}`
     );
+}
+
+// ---------------- SELL ----------------
+if (message.content.startsWith('!sell')) {
+
+    const type = getCaseType(message.content.split(' ')[1]);
+    const amount = parseInt(message.content.split(' ')[2]);
+
+    if (!type || !amount)
+        return message.reply(
+            '❌ !sell rare 5'
+        );
+
+    if (amount <= 0)
+        return message.reply(
+            '❌ неправильна кількість'
+        );
+
+    if (data.users[userId].cases[type] < amount)
+        return message.reply(
+            '❌ недостатньо кейсів'
+        );
+
+    let sellPrice = 0;
+
+    if (type === 'Rare') sellPrice = 100;
+    if (type === 'Epic') sellPrice = 250;
+    if (type === 'Legendary') sellPrice = 800;
+
+    const total = sellPrice * amount;
+
+    data.users[userId].cases[type] -= amount;
+    data.users[userId].coins += total;
+
+    saveData(data);
+
+    return message.reply(
+        `💸 Продано ${amount} ${type} кейс(ів) за ${total} монет`
+    );
+}
+
+// ---------------- PROFILE ----------------
+if (
+    message.content === '!profile' ||
+    message.content === '!prof'
+) {
+
+    const sorted = Object.entries(data.users)
+        .sort((a, b) => b[1].coins - a[1].coins);
+
+    const place =
+        sorted.findIndex(([id]) => id === userId) + 1;
+
+    const u = data.users[userId];
+
+    const totalCases =
+        u.cases.Rare +
+        u.cases.Epic +
+        u.cases.Legendary;
+
+    return message.reply(
+`👤 ПРОФІЛЬ
+
+💰 Монети: ${u.coins}
+🏦 Банк: ${u.bank || 0}
+
+📦 Кейси: ${totalCases}
+🟢 Rare: ${u.cases.Rare}
+🔵 Epic: ${u.cases.Epic}
+🟣 Legendary: ${u.cases.Legendary}
+
+🏆 Місце в топі: #${place}`
+    );
+}
+
+// ---------------- RANK ----------------
+if (message.content === '!rank') {
+
+    const sorted = Object.entries(data.users)
+        .sort((a, b) => b[1].coins - a[1].coins);
+
+    const place =
+        sorted.findIndex(([id]) => id === userId) + 1;
+
+    const myCoins = data.users[userId].coins;
+
+    let text =
+`🏆 РАНГ
+
+📍 Місце: #${place}
+💰 Монети: ${myCoins}
+`;
+
+    if (place > 1) {
+
+        const aboveUser = sorted[place - 2];
+        const needed =
+            aboveUser[1].coins - myCoins + 1;
+
+        text += `\n⬆️ До #${place - 1} залишилось: ${needed} монет`;
+    } else {
+
+        text += `\n👑 Ти займаєш перше місце!`;
+    }
+
+    return message.reply(text);
 }
 
 
